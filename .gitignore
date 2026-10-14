@@ -16,3 +16,6 @@ frontend/.env*
 # Local data and secrets
 .env
 docker-compose.override.yml
+
+# Local configuration files
+*.yml
