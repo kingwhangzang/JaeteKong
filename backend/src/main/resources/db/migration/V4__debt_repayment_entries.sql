@@ -1,0 +1,1 @@
+ALTER TABLE ledger_entries ADD COLUMN IF NOT EXISTS debt_id BIGINT REFERENCES debts(id);

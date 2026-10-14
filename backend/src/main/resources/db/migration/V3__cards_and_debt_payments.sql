@@ -1,0 +1,16 @@
+CREATE TABLE IF NOT EXISTS cards (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    card_type VARCHAR(20) NOT NULL,
+    is_default BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+ALTER TABLE ledger_entries ADD COLUMN IF NOT EXISTS card_id BIGINT REFERENCES cards(id);
+
+CREATE TABLE IF NOT EXISTS debt_payments (
+    id BIGSERIAL PRIMARY KEY,
+    debt_id BIGINT NOT NULL REFERENCES debts(id) ON DELETE CASCADE,
+    month_key VARCHAR(7) NOT NULL,
+    amount NUMERIC(15, 0) NOT NULL DEFAULT 0,
+    UNIQUE (debt_id, month_key)
+);
