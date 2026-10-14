@@ -1,0 +1,18 @@
+# IDE
+.idea/
+*.iml
+.vscode/settings.json
+
+# Java / Spring Boot
+backend/target/
+*.log
+
+# Node / Vue
+frontend/node_modules/
+frontend/dist/
+frontend/.env*
+!frontend/.env.example
+
+# Local data and secrets
+.env
+docker-compose.override.yml
