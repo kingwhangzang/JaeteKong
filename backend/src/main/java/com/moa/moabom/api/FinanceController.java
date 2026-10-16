@@ -148,6 +148,18 @@ public class FinanceController {
     @PutMapping("/cards/{id}/default")
     public Map<String,Object> setDefaultCard(@PathVariable long id) { jdbc.update("UPDATE cards SET is_default=FALSE"); jdbc.update("UPDATE cards SET is_default=TRUE WHERE id=?", id); return Map.of("ok", true); }
 
+    @GetMapping("/accounts")
+    public List<Map<String,Object>> accounts() { return jdbc.queryForList("SELECT * FROM accounts ORDER BY is_default DESC, id"); }
+
+    @PostMapping("/accounts")
+    public Map<String,Object> addAccount(@RequestBody Map<String,Object> b) { boolean isDefault = Boolean.parseBoolean(b.getOrDefault("isDefault", false).toString()); if (isDefault) jdbc.update("UPDATE accounts SET is_default=FALSE"); jdbc.update("INSERT INTO accounts(name,bank,account_type,is_default) VALUES (?,?,?,?)", b.get("name"), b.get("bank"), b.getOrDefault("type", "입출금"), isDefault); return Map.of("ok", true); }
+
+    @PutMapping("/accounts/{id}/default")
+    public Map<String,Object> setDefaultAccount(@PathVariable long id) { jdbc.update("UPDATE accounts SET is_default=FALSE"); jdbc.update("UPDATE accounts SET is_default=TRUE WHERE id=?", id); return Map.of("ok", true); }
+
+    @DeleteMapping("/accounts/{id}")
+    public Map<String,Object> deleteAccount(@PathVariable long id) { jdbc.update("DELETE FROM accounts WHERE id=?", id); return Map.of("ok", true); }
+
     @GetMapping("/settings")
     public Map<String,Object> settings() { Map<String,Object> result = jdbc.queryForMap("SELECT * FROM app_settings LIMIT 1"); result.put("goal_start_date", dateString(result.get("goal_start_date"))); result.put("goal_deadline", dateString(result.get("goal_deadline"))); return result; }
 

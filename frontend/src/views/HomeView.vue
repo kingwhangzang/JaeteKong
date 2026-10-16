@@ -28,6 +28,7 @@ const categories = ref<any[]>([])
 const savings = ref<any[]>([])
 const debts = ref<any[]>([])
 const cards = ref<any[]>([])
+const accounts = ref<any[]>([])
 const goal = ref({ amount: '50000000', years: '3', startDate: localToday() })
 const budget = ref<any>({ amount: '700000', copyNext: false })
 const entry = ref<any>({
@@ -42,6 +43,7 @@ const entry = ref<any>({
 })
 const quickRows = ref<any[]>([{ amount: '', categoryGroup: '', categoryId: '' }])
 const card = ref({ name: '', type: '체크카드', isDefault: true })
+const account = ref({ name: '', bank: '', type: '입출금', isDefault: true })
 const savingForm = ref<any>({ name: '', type: '적금', rate: '0', maturityDate: '', amount: '0' })
 const debtForm = ref<any>({ id: null, name: '', balance: '', rate: '0', dueDate: '' })
 const payment = ref<any>({ debtId: '', amount: '' })
@@ -73,6 +75,7 @@ const budgetPercent = computed(() =>
   ),
 )
 const defaultCard = computed(() => cards.value.find((c) => c.is_default))
+const defaultAccount = computed(() => accounts.value.find((a) => a.is_default))
 const incomeCats = computed(() => categories.value.filter((c) => c.category_type === 'INCOME'))
 const expenseCats = computed(() => categories.value.filter((c) => c.category_type === 'EXPENSE'))
 const entryGroups = computed(() => [
@@ -151,6 +154,7 @@ async function load() {
       savings.value,
       debts.value,
       cards.value,
+      accounts.value,
       budget.value,
       breakdownData.value,
     ] = await Promise.all([
@@ -160,6 +164,7 @@ async function load() {
       api('/savings-products'),
       api('/debts'),
       api('/cards'),
+      api('/accounts'),
       api(`/budgets?month=${month.value}`),
       api(`/breakdown?month=${month.value}`),
     ])
@@ -307,6 +312,21 @@ async function addCard() {
 }
 async function setDefault(id: number) {
   await api(`/cards/${id}/default`, { method: 'PUT' })
+  await load()
+}
+async function addAccount() {
+  await api('/accounts', { method: 'POST', body: JSON.stringify(account.value) })
+  account.value = { name: '', bank: '', type: '입출금', isDefault: false }
+  modal.value = ''
+  await load()
+}
+async function setDefaultAccount(id: number) {
+  await api(`/accounts/${id}/default`, { method: 'PUT' })
+  await load()
+}
+async function deleteAccount(id: number) {
+  if (!confirm('이 계좌를 삭제할까요?')) return
+  await api(`/accounts/${id}`, { method: 'DELETE' })
   await load()
 }
 async function saveCategory() {
@@ -661,6 +681,25 @@ function shiftMonth(n: number) {
         </div>
         <button class="soft-button" @click="modal = 'card'">카드 관리</button>
       </div>
+      <div v-if="settingsTab === 'card'" class="card setting-card card-setting">
+        <span class="eyebrow">ACCOUNT</span>
+        <h2>내 계좌</h2>
+        <p>
+          등록된 계좌 {{ accounts.length }}개 · 기본 계좌 {{ defaultAccount?.name || '없음' }}
+        </p>
+        <div class="card-list-preview">
+          <div v-for="a in accounts" :key="a.id" class="card-preview-row">
+            <span>🏦</span>
+            <div>
+              <b>{{ a.name }}</b
+              ><small>{{ [a.bank, a.account_type].filter(Boolean).join(' · ') }}</small>
+            </div>
+            <strong v-if="a.is_default">기본 계좌</strong>
+          </div>
+          <p v-if="!accounts.length" class="empty">등록된 계좌가 없어요.</p>
+        </div>
+        <button class="soft-button" @click="modal = 'account'">계좌 관리</button>
+      </div>
       <div v-if="settingsTab === 'category'" class="card setting-card category-setting">
         <span class="eyebrow">CATEGORY</span>
         <h2>카테고리</h2>
@@ -897,6 +936,32 @@ function shiftMonth(n: number) {
       ><label class="check-line"
         ><input v-model="card.isDefault" type="checkbox" /> 기본 카드로 설정</label
       ><button class="primary full">카드 추가</button>
+    </form>
+    <form v-else-if="modal === 'account'" class="modal" @submit.prevent="addAccount">
+      <button type="button" class="close" @click="modal = ''">×</button
+      ><span class="eyebrow">ACCOUNT</span>
+      <h2>내 계좌 관리</h2>
+      <div v-for="a in accounts" :key="a.id" class="list-row">
+        <div>
+          <b>{{ a.name }}</b
+          ><small>{{ [a.bank, a.account_type].filter(Boolean).join(' · ') }}</small>
+        </div>
+        <button type="button" class="text-button" @click="setDefaultAccount(a.id)">
+          {{ a.is_default ? '기본 계좌' : '기본으로 설정' }}</button
+        ><button type="button" class="text-button danger" @click="deleteAccount(a.id)">
+          삭제
+        </button>
+      </div>
+      <label>계좌 이름<input v-model="account.name" placeholder="예: 생활비 통장" required /></label
+      ><label>은행<input v-model="account.bank" placeholder="예: 카카오뱅크" /></label
+      ><label
+        >종류<select v-model="account.type">
+          <option>입출금</option>
+          <option>저축</option>
+        </select></label
+      ><label class="check-line"
+        ><input v-model="account.isDefault" type="checkbox" /> 기본 계좌로 설정</label
+      ><button class="primary full">계좌 추가</button>
     </form>
     <form v-else class="modal" @submit.prevent="saveCategory">
       <button type="button" class="close" @click="modal = ''">×</button

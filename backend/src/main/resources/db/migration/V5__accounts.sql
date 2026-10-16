@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS accounts (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    bank VARCHAR(50),
+    account_type VARCHAR(20) NOT NULL,
+    is_default BOOLEAN NOT NULL DEFAULT FALSE
+);
