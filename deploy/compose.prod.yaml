@@ -1,0 +1,47 @@
+# EC2 배포용. 서버의 ~/jaetekong/.env 에 DB_PASSWORD, BACKEND_IMAGE, FRONTEND_IMAGE 를 둔다.
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: jaetekong
+      POSTGRES_USER: jaetekong
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jaetekong -d jaetekong"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    mem_limit: 192m
+
+  backend:
+    image: ${BACKEND_IMAGE}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_APPLICATION_NAME: jaetekong-api
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/jaetekong
+      SPRING_DATASOURCE_USERNAME: jaetekong
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_JPA_OPEN_IN_VIEW: "false"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      SPRING_FLYWAY_ENABLED: "true"
+      SERVER_PORT: "9080"
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info
+    mem_limit: 448m
+
+  frontend:
+    image: ${FRONTEND_IMAGE}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    mem_limit: 64m
+
+volumes:
+  postgres-data:
