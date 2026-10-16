@@ -124,15 +124,48 @@ const calendar = computed<any[]>(() => {
     ...Array.from({ length: pad }, (_, i) => ({ blank: true, key: `b${i}` })),
     ...Array.from({ length: max }, (_, i) => {
       const date = `${month.value}-${String(i + 1).padStart(2, '0')}`
+      const items = entries.value.filter((e) => e.entry_date?.slice(0, 10) === date)
+      const sum = (type: string) =>
+        items.filter((e) => e.entry_type === type).reduce((a, e) => a + Number(e.amount || 0), 0)
+      const income = sum('INCOME')
+      const expense = sum('EXPENSE')
       return {
         date,
         day: i + 1,
         blank: false,
-        items: entries.value.filter((e) => e.entry_date?.slice(0, 10) === date),
+        income,
+        expense,
+        saving: sum('SAVING'),
+        // 날짜별 합계: 소득은 +, 소비는 -, 저축·빚 상환은 제외
+        hasNet: items.some((e) => e.entry_type === 'INCOME' || e.entry_type === 'EXPENSE'),
+        net: income - expense,
       }
     }),
   ]
 })
+const calendarWeeks = computed(() => {
+  const cells = [...calendar.value]
+  while (cells.length % 7) cells.push({ blank: true, key: `e${cells.length}` })
+  return Array.from({ length: cells.length / 7 }, (_, w) => {
+    const days = cells.slice(w * 7, w * 7 + 7)
+    const total = (k: string) => days.reduce((a, d) => a + (d.blank ? 0 : d[k]), 0)
+    return { key: `w${w}`, days, income: total('income'), expense: total('expense'), saving: total('saving') }
+  })
+})
+const sortedEntries = computed(() =>
+  [...entries.value].sort(
+    (a, b) => (a.entry_date || '').localeCompare(b.entry_date || '') || a.id - b.id,
+  ),
+)
+// 달력 칸이 좁아서 10만 원 이상은 만 단위로 줄여 표시
+const signedNumber = (v: number) => {
+  const a = Math.abs(v)
+  const text =
+    a >= 100000
+      ? `${(Math.round(a / 1000) / 10).toLocaleString('ko-KR')}만`
+      : a.toLocaleString('ko-KR')
+  return `${v > 0 ? '+' : v < 0 ? '-' : ''}${text}`
+}
 async function api(path: string, options?: RequestInit) {
   const r = await fetch(`/api${path}`, {
     headers: { 'Content-Type': 'application/json' },
@@ -483,30 +516,31 @@ function shiftMonth(n: number) {
           <span v-for="d in ['월', '화', '수', '목', '금', '토', '일']" :key="d">{{ d }}</span>
         </div>
         <div class="calendar-grid">
-          <div v-for="cell in calendar" :key="cell.key || cell.date" class="calendar-day">
-            <template v-if="!cell.blank"
-              ><b>{{ cell.day }}</b
-              ><button class="day-add" @click="openEntry(cell.date)">＋</button>
-              <div
-                v-for="e in cell.items"
-                :key="e.id"
-                class="calendar-money"
-                :class="{
-                  'expense-day': e.entry_type === 'EXPENSE',
-                  'income-day': e.entry_type === 'INCOME',
-                  'saving-day': e.entry_type === 'SAVING',
-                  'debt-day': e.entry_type === 'DEBT_REPAYMENT',
-                }"
+          <template v-for="week in calendarWeeks" :key="week.key">
+            <div v-for="cell in week.days" :key="cell.key || cell.date" class="calendar-day">
+              <template v-if="!cell.blank"
+                ><b>{{ cell.day }}</b
+                ><button class="day-add" @click="openEntry(cell.date)">＋</button>
+                <div
+                  v-if="cell.hasNet"
+                  class="calendar-net"
+                  :class="{ plus: cell.net > 0, minus: cell.net < 0 }"
+                >
+                  {{ signedNumber(cell.net) }}
+                </div></template
               >
-                {{ e.entry_type === 'INCOME' ? '+' : '-' }}{{ Math.round(e.amount / 10000) }}만
-              </div></template
-            >
-          </div>
+            </div>
+            <div class="week-summary">
+              <span class="income">소득 {{ won(week.income) }}</span
+              ><span class="spend">소비 {{ won(week.expense) }}</span
+              ><span v-if="week.saving" class="save">◆ {{ won(week.saving) }}</span>
+            </div>
+          </template>
         </div>
       </div>
       <div class="card entry-list">
         <h2>거래 내역</h2>
-        <div v-for="e in entries" :key="e.id" class="list-row">
+        <div v-for="e in sortedEntries" :key="e.id" class="list-row">
           <span
             class="record-dot"
             :class="{
