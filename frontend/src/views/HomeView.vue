@@ -85,6 +85,18 @@ const entryDetails = computed(() =>
     (c) => !entry.value.categoryGroup || c.name === entry.value.categoryGroup,
   ),
 )
+// 소득은 대분류만 고르므로 대분류에 해당하는 카테고리를 바로 지정
+function onEntryGroupChange() {
+  entry.value.categoryId =
+    entry.value.type === 'INCOME'
+      ? incomeCats.value.find((c) => c.name === entry.value.categoryGroup)?.id || ''
+      : ''
+}
+// 소분류를 고르면 대분류를 자동으로 채움
+function fillGroup(target: any) {
+  const c = categories.value.find((x) => x.id === Number(target.categoryId))
+  if (c) target.categoryGroup = c.name
+}
 const quickGroups = computed(() => [...new Set(expenseCats.value.map((c) => c.name))])
 const quickDetails = (r: any) =>
   expenseCats.value.filter((c) => !r.categoryGroup || c.name === r.categoryGroup)
@@ -751,7 +763,10 @@ function shiftMonth(n: number) {
       ><span class="eyebrow">NEW RECORD · {{ entry.date }}</span>
       <h2>소비·소득 기록</h2>
       <label
-        >구분<select v-model="entry.type">
+        >구분<select
+          v-model="entry.type"
+          @change="((entry.categoryGroup = ''), (entry.categoryId = ''))"
+        >
           <option value="EXPENSE">소비</option>
           <option value="INCOME">소득</option>
           <option value="SAVING">저축</option>
@@ -759,16 +774,18 @@ function shiftMonth(n: number) {
         </select></label
       ><label>날짜<input v-model="entry.date" type="date" required /></label
       ><label v-if="entry.type !== 'SAVING' && entry.type !== 'DEBT_REPAYMENT'"
-        >대분류<select v-model="entry.categoryGroup" @change="entry.categoryId = ''" required>
+        >대분류<select v-model="entry.categoryGroup" @change="onEntryGroupChange" required>
           <option value="">대분류 선택</option>
           <option v-for="g in entryGroups" :key="g">{{ g }}</option></select
-        ><span class="field-label">소분류</span
-        ><select v-model="entry.categoryId" required>
-          <option value="">소분류 선택</option>
-          <option v-for="c in entryDetails" :key="c.id" :value="c.id">
-            {{ c.emoji }} {{ c.detail_name || c.name }}
-          </option>
-        </select></label
+        ><template v-if="entry.type !== 'INCOME'"
+          ><span class="field-label">소분류</span
+          ><select v-model="entry.categoryId" @change="fillGroup(entry)" required>
+            <option value="">소분류 선택</option>
+            <option v-for="c in entryDetails" :key="c.id" :value="c.id">
+              {{ c.emoji }} {{ c.detail_name || c.name }}
+            </option>
+          </select></template
+        ></label
       ><label v-else-if="entry.type === 'SAVING'"
         >저축 상품<select v-model="entry.savingsProductId" required>
           <option value="">저축상품 선택</option>
@@ -815,7 +832,7 @@ function shiftMonth(n: number) {
         >
           <option value="">대분류</option>
           <option v-for="g in quickGroups" :key="g">{{ g }}</option></select
-        ><select v-model="r.categoryId" required>
+        ><select v-model="r.categoryId" @change="fillGroup(r)" required>
           <option value="">소분류</option>
           <option v-for="c in quickDetails(r)" :key="c.id" :value="c.id">
             {{ c.emoji }} {{ c.detail_name || c.name }}
