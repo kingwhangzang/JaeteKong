@@ -71,6 +71,13 @@ jobs:
           chmod 600 ~/.ssh/ec2.pem
           ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
 
+      - name: Prepare server (first run only)
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          # 사용자 데이터 스크립트 없이 만든 인스턴스도 배포되도록 같은 설정을 보장
+          ssh -i ~/.ssh/ec2.pem "ubuntu@$EC2_HOST" 'sudo bash -s' < deploy/ec2-user-data.sh
+
       - name: Upload compose and env
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
