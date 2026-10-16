@@ -346,14 +346,17 @@ function editEntry(e: any) {
   modal.value = 'entry'
 }
 function openEntry(date = localToday()) {
+  // 직전에 수정한 기록의 id·금액이 남지 않도록 새 객체로 초기화
   entry.value = {
-    ...entry.value,
     date,
     type: 'EXPENSE',
     categoryGroup: '',
     categoryId: '',
-    debtId: '',
+    amount: '',
+    memo: '',
     cardId: defaultCard.value?.id || '',
+    savingsProductId: '',
+    debtId: '',
   }
   modal.value = 'entry'
 }
